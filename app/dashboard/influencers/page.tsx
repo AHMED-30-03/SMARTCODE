@@ -35,8 +35,8 @@ export default function InfluencersPage() {
       supabase.from("influencers").select("*, campaign:campaigns(name)").order("created_at", { ascending: false }),
       supabase.from("campaigns").select("id, name").eq("status", "active"),
     ]);
-    setInfluencers(inf || []);
-    setCampaigns(camp || []);
+    setInfluencers((inf || []) as Influencer[]);
+    setCampaigns((camp || []) as Campaign[]);
     setLoading(false);
   }
 
