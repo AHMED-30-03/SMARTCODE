@@ -124,6 +124,20 @@ export default function InvoicesPage() {
   async function saveInvoice() {
     if (!invoiceData) return;
     setSaving(true);
+
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("invoice_number", invoiceData.invoiceNumber)
+      .single();
+
+    if (existing) {
+      alert(`الفاتورة ${invoiceData.invoiceNumber} محفوظة مسبقاً!`);
+      setSaving(false);
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     // Save invoice record
