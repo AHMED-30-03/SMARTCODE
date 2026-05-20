@@ -46,15 +46,15 @@ export default function InfluencersPage() {
     setUploading(true);
     setExtracted([]);
 
-    const toBase64 = (f: File) => new Promise<string>((res, rej) => {
+    const readAsText = (f: File) => new Promise<string>((res, rej) => {
       const r = new FileReader();
-      r.onload = () => res((r.result as string).split(",")[1]);
+      r.onload = () => res(r.result as string);
       r.onerror = () => rej(new Error("read failed"));
-      r.readAsDataURL(f);
+      r.readAsText(f, "utf-8");
     });
 
     try {
-      const base64 = await toBase64(file);
+      const htmlContent = await readAsText(file);
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,10 +63,7 @@ export default function InfluencersPage() {
           max_tokens: 2000,
           messages: [{
             role: "user",
-            content: [
-              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-              { type: "text", text: 'استخرج من هذه الفاتورة بيانات جميع المؤثرين. أجب فقط بـ JSON بدون أي نص أو backticks:\n{"influencers":[{"name":"الاسم","amount":0,"iban":"","bank_name":""}]}. المبلغ رقم فقط بدون عملة. إذا لم تجد IBAN أو بنك اتركها فارغة.' }
-            ]
+            content: `استخرج من هذه الفاتورة بيانات جميع المؤثرين. أجب فقط بـ JSON بدون أي نص أو backticks:\n{"influencers":[{"name":"الاسم","amount":0,"iban":"","bank_name":""}]}. المبلغ رقم فقط بدون عملة. إذا لم تجد IBAN أو بنك اتركها فارغة.\n\nمحتوى الفاتورة:\n${htmlContent.slice(0, 8000)}`
           }]
         })
       });
@@ -133,7 +130,7 @@ export default function InfluencersPage() {
         <div className="flex gap-3">
           <button onClick={() => setShowUpload(!showUpload)}
             className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition">
-            <Upload className="w-4 h-4" /> رفع فاتورة PDF
+            <Upload className="w-4 h-4" /> رفع فاتورة HTML
           </button>
           <button onClick={() => setShowManual(!showManual)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
@@ -158,8 +155,8 @@ export default function InfluencersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">ملف PDF</label>
               <label className="flex items-center gap-2 w-full px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 cursor-pointer transition">
                 <Upload className="w-4 h-4" />
-                {uploading ? "جارٍ التحليل..." : "اختر ملف PDF"}
-                <input type="file" accept=".pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                {uploading ? "جارٍ تحليل الفاتورة..." : "اختر ملف PDF"}
+                <input type="file" accept=".html,.htm" className="hidden" onChange={handleFileUpload} disabled={uploading} />
               </label>
             </div>
           </div>
