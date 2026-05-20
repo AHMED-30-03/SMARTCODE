@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Plus, Loader2, Users, Search, Send, Pencil, X, Check } from "lucide-react";
-import { Influencer, Campaign } from "@/types";
+import { Plus, Loader2, Users, Search, Send, Pencil, X, Check, Trash2 } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   pending: { label: "بانتظار الطلب", color: "bg-amber-100 text-amber-700" },
@@ -13,8 +12,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function InfluencersPage() {
   const supabase = createClient();
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [influencers, setInfluencers] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showManual, setShowManual] = useState(false);
@@ -31,8 +30,8 @@ export default function InfluencersPage() {
       supabase.from("influencers").select("*, campaign:campaigns(name)").order("created_at", { ascending: false }),
       supabase.from("campaigns").select("id, name").eq("status", "active"),
     ]);
-    setInfluencers((inf || []) as Influencer[]);
-    setCampaigns((camp || []) as Campaign[]);
+    setInfluencers(inf || []);
+    setCampaigns(camp || []);
     setLoading(false);
   }
 
@@ -63,13 +62,12 @@ export default function InfluencersPage() {
   function startEdit(inf: any) {
     setEditingId(inf.id);
     setEditForm({
-      name: inf.name,
-      amount: inf.amount,
+      name: inf.name || "",
+      amount: inf.amount || 0,
       iban: inf.iban || "",
       bank_name: inf.bank_name || "",
       email: inf.email || "",
       whatsapp: inf.whatsapp || "",
-      campaign_id: inf.campaign_id || "",
     });
   }
 
@@ -81,7 +79,6 @@ export default function InfluencersPage() {
       bank_name: editForm.bank_name,
       email: editForm.email,
       whatsapp: editForm.whatsapp,
-      campaign_id: editForm.campaign_id || null,
     }).eq("id", id);
     setEditingId(null);
     fetchData();
@@ -114,11 +111,11 @@ export default function InfluencersPage() {
           <form onSubmit={addManual} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { key: "name", label: "الاسم *", type: "text", placeholder: "اسم المشهور" },
-              { key: "amount", label: "المبلغ المستحق (ر.س) *", type: "number", placeholder: "0" },
-              { key: "email", label: "الإيميل *", type: "email", placeholder: "influencer@example.com" },
+              { key: "amount", label: "المبلغ (ر.س) *", type: "number", placeholder: "0" },
+              { key: "email", label: "الإيميل *", type: "email", placeholder: "example@email.com" },
               { key: "whatsapp", label: "واتساب", type: "text", placeholder: "05xxxxxxxx" },
               { key: "iban", label: "IBAN", type: "text", placeholder: "SA..." },
-              { key: "bank_name", label: "اسم البنك", type: "text", placeholder: "مثال: الأهلي" },
+              { key: "bank_name", label: "البنك", type: "text", placeholder: "اسم البنك" },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{f.label}</label>
@@ -136,10 +133,10 @@ export default function InfluencersPage() {
               </select>
             </div>
             <div className="md:col-span-3 flex gap-3">
-              <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+              <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium">
                 <Plus className="w-4 h-4" /> إضافة
               </button>
-              <button type="button" onClick={() => setShowManual(false)} className="px-5 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">إلغاء</button>
+              <button type="button" onClick={() => setShowManual(false)} className="px-5 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">إلغاء</button>
             </div>
           </form>
         </div>
@@ -149,8 +146,8 @@ export default function InfluencersPage() {
         <div className="p-4 border-b border-gray-50">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث عن مشهور..."
-              className="w-full pr-10 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث..."
+              className="w-full pr-10 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
         {loading ? (
@@ -159,15 +156,16 @@ export default function InfluencersPage() {
           <div className="text-center py-16 text-gray-400"><Users className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>لا يوجد مشاهير</p></div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50"><tr>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">المشهور</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">الحملة</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">المبلغ</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">الإيميل</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">IBAN</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">الحالة</th>
-              <th className="text-right px-4 py-3 font-medium text-gray-600">إجراء</th>
-            </tr></thead>
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">المشهور</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">المبلغ</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">الإيميل</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">IBAN</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">الحالة</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">إجراء</th>
+              </tr>
+            </thead>
             <tbody>
               {filtered.map(inf => {
                 const sc = statusConfig[inf.status] || statusConfig.pending;
@@ -177,38 +175,36 @@ export default function InfluencersPage() {
                     <td className="px-4 py-3">
                       {isEditing ? (
                         <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
                       ) : (
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xs shrink-0">
-                            {inf.name.charAt(0)}
+                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs shrink-0">
+                            {inf.name?.charAt(0)}
                           </div>
                           <span className="font-medium text-gray-800">{inf.name}</span>
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{(inf as any).campaign?.name || "—"}</td>
                     <td className="px-4 py-3">
                       {isEditing ? (
                         <input type="number" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
-                          className="w-24 px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-24 px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
                       ) : (
-                        <span className="font-semibold">{inf.amount.toLocaleString("ar-SA")} ر.س</span>
+                        <span className="font-semibold">{inf.amount?.toLocaleString("ar-SA")} ر.س</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {isEditing ? (
-                        <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
                       ) : (
-                        <span className="text-xs text-gray-500">{(inf as any).email || "—"}</span>
+                        <span className="text-xs text-gray-500">{inf.email || "—"}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {isEditing ? (
                         <input value={editForm.iban} onChange={e => setEditForm({ ...editForm, iban: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="SA..." />
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" placeholder="SA..." />
                       ) : (
                         <span className="text-xs text-gray-500">{inf.iban || "—"}</span>
                       )}
@@ -221,17 +217,17 @@ export default function InfluencersPage() {
                         {isEditing ? (
                           <>
                             <button onClick={() => saveEdit(inf.id)}
-                              className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition">
+                              className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg">
                               <Check className="w-3 h-3" /> حفظ
                             </button>
                             <button onClick={() => setEditingId(null)}
-                              className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+                              className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg">
                               <X className="w-3 h-3" /> إلغاء
                             </button>
                           </>
                         ) : (
                           <>
-                            ({inf.status === "pending") {inf.status === "pending" && ({inf.status === "pending" && ( (
+                            {inf.status === "pending" && (
                               <button onClick={() => requestTransfer(inf.id)}
                                 className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
                                 <Send className="w-3 h-3" /> طلب تحويل
@@ -240,6 +236,10 @@ export default function InfluencersPage() {
                             <button onClick={() => startEdit(inf)}
                               className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
                               <Pencil className="w-3 h-3" /> تعديل
+                            </button>
+                            <button onClick={() => deleteInfluencer(inf.id)}
+                              className="text-gray-300 hover:text-red-500 transition">
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </>
                         )}
