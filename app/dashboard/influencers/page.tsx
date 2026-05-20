@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Plus, Loader2, Users, Search, CheckCircle, Clock, Send } from "lucide-react";
+import { Plus, Loader2, Users, Search, Send, Pencil, X, Check } from "lucide-react";
 import { Influencer, Campaign } from "@/types";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -18,7 +18,8 @@ export default function InfluencersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showManual, setShowManual] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
   const [manualForm, setManualForm] = useState({
     name: "", amount: "", iban: "", bank_name: "", campaign_id: "", email: "", whatsapp: ""
   });
@@ -26,15 +27,12 @@ export default function InfluencersPage() {
   useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    const [{ data: inf }, { data: camp }, { data: prof }] = await Promise.all([
+    const [{ data: inf }, { data: camp }] = await Promise.all([
       supabase.from("influencers").select("*, campaign:campaigns(name)").order("created_at", { ascending: false }),
       supabase.from("campaigns").select("id, name").eq("status", "active"),
-      supabase.from("profiles").select("*").eq("id", user?.id).single(),
     ]);
     setInfluencers((inf || []) as Influencer[]);
     setCampaigns((camp || []) as Campaign[]);
-    setProfile(prof);
     setLoading(false);
   }
 
@@ -62,8 +60,40 @@ export default function InfluencersPage() {
     fetchData();
   }
 
+  function startEdit(inf: any) {
+    setEditingId(inf.id);
+    setEditForm({
+      name: inf.name,
+      amount: inf.amount,
+      iban: inf.iban || "",
+      bank_name: inf.bank_name || "",
+      email: inf.email || "",
+      whatsapp: inf.whatsapp || "",
+      campaign_id: inf.campaign_id || "",
+    });
+  }
+
+  async function saveEdit(id: string) {
+    await supabase.from("influencers").update({
+      name: editForm.name,
+      amount: parseFloat(editForm.amount) || 0,
+      iban: editForm.iban,
+      bank_name: editForm.bank_name,
+      email: editForm.email,
+      whatsapp: editForm.whatsapp,
+      campaign_id: editForm.campaign_id || null,
+    }).eq("id", id);
+    setEditingId(null);
+    fetchData();
+  }
+
+  async function deleteInfluencer(id: string) {
+    if (!confirm("هل تريد حذف هذا المشهور؟")) return;
+    await supabase.from("influencers").delete().eq("id", id);
+    fetchData();
+  }
+
   const filtered = influencers.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
-  const canRequest = true;
 
   return (
     <div className="p-6 max-w-6xl">
@@ -115,7 +145,7 @@ export default function InfluencersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-50">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -130,39 +160,90 @@ export default function InfluencersPage() {
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>
-              <th className="text-right px-5 py-3 font-medium text-gray-600">المشهور</th>
-              <th className="text-right px-5 py-3 font-medium text-gray-600">الحملة</th>
-              <th className="text-right px-5 py-3 font-medium text-gray-600">المبلغ</th>
-              <th className="text-right px-5 py-3 font-medium text-gray-600">الإيميل</th>
-              <th className="text-right px-5 py-3 font-medium text-gray-600">الحالة</th>
-              <th className="text-right px-5 py-3 font-medium text-gray-600"></th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">المشهور</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">الحملة</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">المبلغ</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">الإيميل</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">IBAN</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">الحالة</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">إجراء</th>
             </tr></thead>
             <tbody>
               {filtered.map(inf => {
                 const sc = statusConfig[inf.status] || statusConfig.pending;
+                const isEditing = editingId === inf.id;
                 return (
-                  <tr key={inf.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xs shrink-0">
-                          {inf.name.charAt(0)}
+                  <tr key={inf.id} className={`border-t border-gray-50 transition ${isEditing ? "bg-blue-50/30" : "hover:bg-gray-50/50"}`}>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xs shrink-0">
+                            {inf.name.charAt(0)}
+                          </div>
+                          <span className="font-medium text-gray-800">{inf.name}</span>
                         </div>
-                        <span className="font-medium text-gray-800">{inf.name}</span>
-                      </div>
+                      )}
                     </td>
-                    <td className="px-5 py-3 text-gray-500">{(inf as any).campaign?.name || "—"}</td>
-                    <td className="px-5 py-3 font-semibold">{inf.amount.toLocaleString("ar-SA")} ر.س</td>
-                    <td className="px-5 py-3 text-xs text-gray-500">{(inf as any).email || "—"}</td>
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3 text-gray-500 text-xs">{(inf as any).campaign?.name || "—"}</td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input type="number" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                          className="w-24 px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      ) : (
+                        <span className="font-semibold">{inf.amount.toLocaleString("ar-SA")} ر.س</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      ) : (
+                        <span className="text-xs text-gray-500">{(inf as any).email || "—"}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input value={editForm.iban} onChange={e => setEditForm({ ...editForm, iban: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="SA..." />
+                      ) : (
+                        <span className="text-xs text-gray-500">{inf.iban || "—"}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${sc.color}`}>{sc.label}</span>
                     </td>
-                    <td className="px-5 py-3">
-                      {canRequest && inf.status === "pending" && (
-                        <button onClick={() => requestTransfer(inf.id)}
-                          className="flex items-center gap-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
-                          <Send className="w-3 h-3" /> طلب تحويل
-                        </button>
-                      )}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <button onClick={() => saveEdit(inf.id)}
+                              className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition">
+                              <Check className="w-3 h-3" /> حفظ
+                            </button>
+                            <button onClick={() => setEditingId(null)}
+                              className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+                              <X className="w-3 h-3" /> إلغاء
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {inf.status === "pending" && (
+                              <button onClick={() => requestTransfer(inf.id)}
+                                className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
+                                <Send className="w-3 h-3" /> طلب تحويل
+                              </button>
+                            )}
+                            <button onClick={() => startEdit(inf)}
+                              className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+                              <Pencil className="w-3 h-3" /> تعديل
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
