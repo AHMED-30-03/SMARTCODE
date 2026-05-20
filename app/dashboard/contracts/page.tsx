@@ -45,7 +45,7 @@ export default function ContractsPage() {
       status: "pending",
       added_by: user?.id,
     });
-    setForm({ celebrity_id: "", campaign_id: "", amount: "", notes: "" });
+    setForm({ celebrity_id: "", campaign_id: "", amount: "", notes: "", ad_link: "", drive_link: "" });
     setShowForm(false);
     fetchData();
   }
