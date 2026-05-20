@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const { to, name, amount, receiptNum, transferRef, bank, iban, date } = body;
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@smartcode.sa";
+  const FROM_EMAIL = process.env.FROM_EMAIL || "onboarding@resend.dev";
 
   if (!RESEND_API_KEY) {
     return NextResponse.json({ error: "RESEND_API_KEY not set" }, { status: 500 });
