@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, TrendingUp, Receipt, Megaphone } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, TrendingUp, Receipt, Megaphone, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { UserProfile, UserRole } from "@/types";
 import clsx from "clsx";
@@ -19,22 +19,19 @@ const roleBadgeColors: Record<UserRole, string> = {
 };
 
 const navItems = [
-  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, roles: ["admin", "campaign_manager", "accountant"] },
-  { href: "/dashboard/campaigns", label: "الحملات", icon: Megaphone, roles: ["admin", "campaign_manager", "accountant"] },
-  { href: "/dashboard/influencers", label: "المؤثرون", icon: Users, roles: ["admin", "campaign_manager", "accountant"] },
-  { href: "/dashboard/transfers", label: "التحويلات", icon: TrendingUp, roles: ["admin", "accountant"] },
-  { href: "/dashboard/receipts", label: "الإيصالات", icon: Receipt, roles: ["admin", "campaign_manager", "accountant"] },
-  { href: "/dashboard/users", label: "المستخدمون", icon: Settings, roles: ["admin"] },
+  { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
+  { href: "/dashboard/campaigns", label: "الحملات", icon: Megaphone },
+  { href: "/dashboard/celebrities", label: "المشاهير", icon: Star },
+  { href: "/dashboard/contracts", label: "العقود", icon: FileText },
+  { href: "/dashboard/transfers", label: "التحويلات", icon: TrendingUp },
+  { href: "/dashboard/receipts", label: "الإيصالات", icon: Receipt },
+  { href: "/dashboard/users", label: "المستخدمون", icon: Settings },
 ];
 
 export default function Sidebar({ profile }: { profile: UserProfile }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-
-  const visibleItems = navItems.filter(item =>
-    item.roles.includes(profile?.role || "accountant")
-  );
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -56,7 +53,7 @@ export default function Sidebar({ profile }: { profile: UserProfile }) {
       </div>
 
       <nav className="flex-1 p-3 space-y-0.5">
-        {visibleItems.map(item => {
+        {navItems.map(item => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (

@@ -231,7 +231,7 @@ export default function InfluencersPage() {
                           </>
                         ) : (
                           <>
-                            {inf.status === "pending" && (
+                            ({inf.status === "pending") {inf.status === "pending" && ({inf.status === "pending" && ( (
                               <button onClick={() => requestTransfer(inf.id)}
                                 className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
                                 <Send className="w-3 h-3" /> طلب تحويل

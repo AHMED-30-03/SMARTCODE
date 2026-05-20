@@ -8,7 +8,7 @@ export default function TransfersPage() {
   const [requested, setRequested] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
-  const [form, setForm] = useState({ iban: "", bank_name: "", transfer_ref: "", notes: "" });
+  const [form, setForm] = useState({ transfer_ref: "", notes: "" });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -18,17 +18,17 @@ export default function TransfersPage() {
   useEffect(() => { fetchRequested(); }, []);
 
   async function fetchRequested() {
-    const { data } = await supabase.from("influencers")
-      .select("*, campaign:campaigns(name)")
+    const { data } = await supabase.from("contracts")
+      .select("*, celebrity:celebrities(name, email, iban, bank_name), campaign:campaigns(name)")
       .in("status", ["requested", "processing"])
       .order("created_at", { ascending: false });
     setRequested(data || []);
     setLoading(false);
   }
 
-  function openTransfer(inf: any) {
-    setSelected(inf);
-    setForm({ iban: inf.iban || "", bank_name: inf.bank_name || "", transfer_ref: `TXN-${Date.now().toString().slice(-8)}`, notes: "" });
+  function openTransfer(con: any) {
+    setSelected(con);
+    setForm({ transfer_ref: `TXN-${Date.now().toString().slice(-8)}`, notes: "" });
     setReceiptFile(null);
     setSuccess(null);
   }
@@ -40,9 +40,7 @@ export default function TransfersPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    await supabase.from("influencers").update({
-      status: "paid", iban: form.iban, bank_name: form.bank_name,
-    }).eq("id", selected.id);
+    await supabase.from("contracts").update({ status: "paid" }).eq("id", selected.id);
 
     const receiptNum = `RCP-${Date.now().toString().slice(-6)}`;
     let receiptBase64 = "";
@@ -56,13 +54,13 @@ export default function TransfersPage() {
       });
     }
 
-    await supabase.from("receipts").insert({
-      influencer_id: selected.id,
+    await supabase.from("contract_receipts").insert({
+      contract_id: selected.id,
       receipt_number: receiptNum,
       amount: selected.amount,
       transfer_ref: form.transfer_ref,
-      bank_name: form.bank_name,
-      iban: form.iban,
+      bank_name: selected.celebrity?.bank_name || "",
+      iban: selected.celebrity?.iban || "",
       notes: form.notes,
       receipt_pdf: receiptBase64,
       created_by: user?.id,
@@ -70,35 +68,27 @@ export default function TransfersPage() {
 
     setSaving(false);
 
-    if (selected.email) {
+    if (selected.celebrity?.email) {
       setSending(true);
-      await sendReceiptEmail({
-        to: selected.email,
-        name: selected.name,
-        amount: selected.amount,
-        receiptNum,
-        transferRef: form.transfer_ref,
-        bank: form.bank_name,
-        iban: form.iban,
-        date: new Date().toLocaleDateString("ar-SA"),
+      await fetch("/api/send-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: selected.celebrity.email,
+          name: selected.celebrity.name,
+          amount: selected.amount,
+          receiptNum,
+          transferRef: form.transfer_ref,
+          bank: selected.celebrity.bank_name || "—",
+          iban: selected.celebrity.iban || "—",
+          date: new Date().toLocaleDateString("ar-SA"),
+        }),
       });
       setSending(false);
     }
 
     setSuccess(receiptNum);
     fetchRequested();
-  }
-
-  async function sendReceiptEmail(data: any) {
-    try {
-      await fetch("/api/send-receipt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-    } catch (e) {
-      console.error("Email send failed", e);
-    }
   }
 
   return (
@@ -121,20 +111,20 @@ export default function TransfersPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {requested.map(inf => (
-                <div key={inf.id} onClick={() => openTransfer(inf)}
-                  className={`p-4 hover:bg-gray-50/50 transition cursor-pointer flex items-center justify-between ${selected?.id === inf.id ? "bg-blue-50/30 border-r-2 border-blue-500" : ""}`}>
+              {requested.map(con => (
+                <div key={con.id} onClick={() => openTransfer(con)}
+                  className={`p-4 hover:bg-gray-50/50 transition cursor-pointer flex items-center justify-between ${selected?.id === con.id ? "bg-blue-50/30 border-r-2 border-blue-500" : ""}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm shrink-0">
-                      {inf.name.charAt(0)}
+                      {con.celebrity?.name?.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-800 text-sm">{inf.name}</p>
-                      <p className="text-xs text-gray-400">{inf.email || "بدون إيميل"}</p>
+                      <p className="font-medium text-gray-800 text-sm">{con.celebrity?.name}</p>
+                      <p className="text-xs text-gray-400">{con.campaign?.name || "بدون حملة"}</p>
                     </div>
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-gray-800">{inf.amount?.toLocaleString("ar-SA")}</p>
+                    <p className="font-bold text-gray-800">{con.amount?.toLocaleString("ar-SA")}</p>
                     <p className="text-xs text-gray-400">ر.س</p>
                   </div>
                 </div>
@@ -151,10 +141,10 @@ export default function TransfersPage() {
               </div>
               <h3 className="font-bold text-gray-800 text-lg mb-1">تم التحويل بنجاح!</h3>
               <p className="font-mono text-blue-600 font-bold text-lg mb-2">{success}</p>
-              {selected?.email && (
+              {selected?.celebrity?.email && (
                 <div className="flex items-center justify-center gap-2 text-sm text-green-600 bg-green-50 px-4 py-2 rounded-xl">
                   <Mail className="w-4 h-4" />
-                  تم إرسال الإيصال على {selected.email}
+                  تم إرسال الإيصال على {selected.celebrity.email}
                 </div>
               )}
               <button onClick={() => { setSelected(null); setSuccess(null); }}
@@ -168,37 +158,42 @@ export default function TransfersPage() {
                 <h2 className="font-semibold text-gray-800">تفاصيل التحويل</h2>
                 <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
               </div>
-              <div className="bg-gradient-to-l from-blue-50 to-indigo-50 rounded-xl p-4 mb-5 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-gray-800">{selected.name}</p>
-                  <p className="text-sm text-gray-500">{selected.email}</p>
+              <div className="bg-gradient-to-l from-blue-50 to-indigo-50 rounded-xl p-4 mb-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-gray-800">{selected.celebrity?.name}</p>
+                    <p className="text-sm text-gray-500">{selected.campaign?.name || "بدون حملة"}</p>
+                    <p className="text-xs text-gray-400 mt-1">{selected.celebrity?.email}</p>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-2xl font-bold text-blue-700">{selected.amount?.toLocaleString("ar-SA")}</p>
+                    <p className="text-sm text-blue-500">ريال سعودي</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="text-2xl font-bold text-blue-700">{selected.amount?.toLocaleString("ar-SA")}</p>
-                  <p className="text-sm text-blue-500">ريال سعودي</p>
-                </div>
+                {selected.celebrity?.iban && (
+                  <div className="mt-3 pt-3 border-t border-blue-100 grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-gray-500">البنك: </span><span className="font-medium">{selected.celebrity.bank_name || "—"}</span></div>
+                    <div><span className="text-gray-500">IBAN: </span><span className="font-mono">{selected.celebrity.iban}</span></div>
+                  </div>
+                )}
               </div>
               <form onSubmit={confirmTransfer} className="space-y-4">
-                {[
-                  { key: "iban", label: "IBAN", placeholder: "SA..." },
-                  { key: "bank_name", label: "اسم البنك", placeholder: "البنك الأهلي" },
-                  { key: "transfer_ref", label: "رقم المرجع", placeholder: "TXN-..." },
-                  { key: "notes", label: "ملاحظات", placeholder: "اختياري" },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{f.label}</label>
-                    <input placeholder={f.placeholder} value={(form as any)[f.key]}
-                      onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
-                  </div>
-                ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">رقم المرجع</label>
+                  <input placeholder="TXN-..." value={form.transfer_ref} onChange={e => setForm({ ...form, transfer_ref: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">ملاحظات</label>
+                  <input placeholder="اختياري" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">إيصال التحويل PDF</label>
                   <label className="flex items-center gap-2 w-full px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 cursor-pointer transition">
                     <Upload className="w-4 h-4" />
                     {receiptFile ? receiptFile.name : "ارفع إيصال التحويل من البنك"}
-                    <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden"
-                      onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
+                    <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
                   </label>
                 </div>
                 <button type="submit" disabled={saving || sending}

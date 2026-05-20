@@ -119,3 +119,66 @@ ALTER TABLE public.receipts ADD COLUMN IF NOT EXISTS receipt_pdf TEXT DEFAULT ''
 ALTER TABLE public.influencers DROP CONSTRAINT IF EXISTS influencers_status_check;
 ALTER TABLE public.influencers ADD CONSTRAINT influencers_status_check 
   CHECK (status IN ('pending', 'requested', 'processing', 'paid'));
+
+-- ============================================
+-- UPDATE v2: Celebrities + Contracts tables
+-- ============================================
+
+-- جدول المشاهير (يتسجل مرة واحدة)
+CREATE TABLE IF NOT EXISTS public.celebrities (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT DEFAULT '',
+  whatsapp TEXT DEFAULT '',
+  iban TEXT DEFAULT '',
+  bank_name TEXT DEFAULT '',
+  notes TEXT DEFAULT '',
+  added_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- جدول العقود (مشهور + حملة + مبلغ)
+CREATE TABLE IF NOT EXISTS public.contracts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  celebrity_id UUID REFERENCES public.celebrities(id) ON DELETE CASCADE,
+  campaign_id UUID REFERENCES public.campaigns(id) ON DELETE SET NULL,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  status TEXT DEFAULT 'pending'
+    CHECK (status IN ('pending', 'requested', 'processing', 'paid')),
+  notes TEXT DEFAULT '',
+  added_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE public.celebrities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "celebrities_select" ON public.celebrities FOR SELECT TO authenticated USING (true);
+CREATE POLICY "celebrities_insert" ON public.celebrities FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "celebrities_update" ON public.celebrities FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "celebrities_delete" ON public.celebrities FOR DELETE TO authenticated USING (true);
+
+CREATE POLICY "contracts_select" ON public.contracts FOR SELECT TO authenticated USING (true);
+CREATE POLICY "contracts_insert" ON public.contracts FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "contracts_update" ON public.contracts FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "contracts_delete" ON public.contracts FOR DELETE TO authenticated USING (true);
+
+-- جدول الإيصالات للعقود
+CREATE TABLE IF NOT EXISTS public.contract_receipts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  contract_id UUID REFERENCES public.contracts(id) ON DELETE CASCADE,
+  receipt_number TEXT NOT NULL UNIQUE,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  transfer_ref TEXT DEFAULT '',
+  bank_name TEXT DEFAULT '',
+  iban TEXT DEFAULT '',
+  notes TEXT DEFAULT '',
+  receipt_pdf TEXT DEFAULT '',
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.contract_receipts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "contract_receipts_select" ON public.contract_receipts FOR SELECT TO authenticated USING (true);
+CREATE POLICY "contract_receipts_insert" ON public.contract_receipts FOR INSERT TO authenticated WITH CHECK (true);
