@@ -47,38 +47,59 @@ export default function InvoicesPage() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, "text/xml");
 
-    const get = (tag: string) => doc.getElementsByTagNameNS("*", tag)[0]?.textContent?.trim() || "";
-    const getAttr = (tag: string, attr: string) => doc.getElementsByTagNameNS("*", tag)[0]?.getAttribute(attr) || "";
+    const CBC = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+    const CAC = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
 
-    const invoiceNumber = get("ID") || "";
-    const issueDate = get("IssueDate") || "";
+    const root = doc.documentElement;
+
+    // Get direct children only for invoice number and date
+    const getDirectChild = (parent: Element, ns: string, tag: string) => {
+      for (const child of Array.from(parent.childNodes)) {
+        const el = child as Element;
+        if (el.localName === tag && (el.namespaceURI === ns || !el.namespaceURI)) {
+          return el.textContent?.trim() || "";
+        }
+      }
+      return "";
+    };
+
+    const invoiceNumber = getDirectChild(root, CBC, "ID");
+    const issueDate = getDirectChild(root, CBC, "IssueDate");
 
     // Supplier
-    const supplierParty = doc.getElementsByTagNameNS("*", "AccountingSupplierParty")[0];
-    const supplier = supplierParty?.getElementsByTagNameNS("*", "RegistrationName")[0]?.textContent?.trim() || "";
-    const supplierTax = supplierParty?.getElementsByTagNameNS("*", "CompanyID")[0]?.textContent?.trim() || "";
+    const supplierParty = doc.getElementsByTagNameNS(CAC, "AccountingSupplierParty")[0];
+    const supplier = supplierParty?.getElementsByTagNameNS(CAC, "PartyLegalEntity")[0]
+      ?.getElementsByTagNameNS(CBC, "RegistrationName")[0]?.textContent?.trim() || "";
+    const supplierTax = supplierParty?.getElementsByTagNameNS(CAC, "PartyTaxScheme")[0]
+      ?.getElementsByTagNameNS(CBC, "CompanyID")[0]?.textContent?.trim() || "";
 
     // Customer
-    const customerParty = doc.getElementsByTagNameNS("*", "AccountingCustomerParty")[0];
-    const customer = customerParty?.getElementsByTagNameNS("*", "RegistrationName")[0]?.textContent?.trim() || "";
-    const customerTax = customerParty?.getElementsByTagNameNS("*", "CompanyID")[0]?.textContent?.trim() || "";
+    const customerParty = doc.getElementsByTagNameNS(CAC, "AccountingCustomerParty")[0];
+    const customer = customerParty?.getElementsByTagNameNS(CAC, "PartyLegalEntity")[0]
+      ?.getElementsByTagNameNS(CBC, "RegistrationName")[0]?.textContent?.trim() || "";
+    const customerTax = customerParty?.getElementsByTagNameNS(CAC, "PartyTaxScheme")[0]
+      ?.getElementsByTagNameNS(CBC, "CompanyID")[0]?.textContent?.trim() || "";
 
     // Items
-    const invoiceLines = doc.getElementsByTagNameNS("*", "InvoiceLine");
+    const invoiceLines = doc.getElementsByTagNameNS(CAC, "InvoiceLine");
     const items = Array.from(invoiceLines).map(line => {
-      const name = line.getElementsByTagNameNS("*", "Name")[0]?.textContent?.trim() || "";
-      const quantity = parseFloat(line.getElementsByTagNameNS("*", "InvoicedQuantity")[0]?.textContent || "1");
-      const price = parseFloat(line.getElementsByTagNameNS("*", "PriceAmount")[0]?.textContent || "0");
-      const total = parseFloat(line.getElementsByTagNameNS("*", "LineExtensionAmount")[0]?.textContent || "0");
-      const tax = parseFloat(line.getElementsByTagNameNS("*", "TaxAmount")[0]?.textContent || "0");
+      const name = line.getElementsByTagNameNS(CAC, "Item")[0]
+        ?.getElementsByTagNameNS(CBC, "Name")[0]?.textContent?.trim() || "";
+      const quantity = parseFloat(line.getElementsByTagNameNS(CBC, "InvoicedQuantity")[0]?.textContent || "1");
+      const price = parseFloat(line.getElementsByTagNameNS(CAC, "Price")[0]
+        ?.getElementsByTagNameNS(CBC, "PriceAmount")[0]?.textContent || "0");
+      const total = parseFloat(line.getElementsByTagNameNS(CBC, "LineExtensionAmount")[0]?.textContent || "0");
+      const taxTotal = line.getElementsByTagNameNS(CAC, "TaxTotal")[0];
+      const tax = parseFloat(taxTotal?.getElementsByTagNameNS(CBC, "TaxAmount")[0]?.textContent || "0");
       return { name, quantity, price, total, tax };
     });
 
     // Totals
-    const legalTotal = doc.getElementsByTagNameNS("*", "LegalMonetaryTotal")[0];
-    const totalExcl = parseFloat(legalTotal?.getElementsByTagNameNS("*", "TaxExclusiveAmount")[0]?.textContent || "0");
-    const totalIncl = parseFloat(legalTotal?.getElementsByTagNameNS("*", "PayableAmount")[0]?.textContent || "0");
-    const totalTax = parseFloat(doc.getElementsByTagNameNS("*", "TaxAmount")[0]?.textContent || "0");
+    const legalTotal = doc.getElementsByTagNameNS(CAC, "LegalMonetaryTotal")[0];
+    const totalExcl = parseFloat(legalTotal?.getElementsByTagNameNS(CBC, "TaxExclusiveAmount")[0]?.textContent || "0");
+    const totalIncl = parseFloat(legalTotal?.getElementsByTagNameNS(CBC, "PayableAmount")[0]?.textContent || "0");
+    const taxTotals = doc.getElementsByTagNameNS(CAC, "TaxTotal");
+    const totalTax = parseFloat(taxTotals[0]?.getElementsByTagNameNS(CBC, "TaxAmount")[0]?.textContent || "0");
 
     return { invoiceNumber, issueDate, supplier, supplierTax, customer, customerTax, items, totalExcl, totalTax, totalIncl };
   }
