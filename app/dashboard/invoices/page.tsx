@@ -22,9 +22,9 @@ export default function InvoicesPage() {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [celebrities, setCelebrities] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<Record<number, { celebrity_id: string; campaign_id: string }>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedContracts, setSavedContracts] = useState<{name: string; amount: number; isNew: boolean}[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
 
   useEffect(() => { fetchLists(); fetchInvoices(); }, []);
@@ -115,10 +115,6 @@ export default function InvoicesPage() {
     try {
       const data = parseXML(text);
       setInvoiceData(data);
-      // init assignments
-      const init: Record<number, { celebrity_id: string; campaign_id: string }> = {};
-      data.items.forEach((_, i) => { init[i] = { celebrity_id: "", campaign_id: "" }; });
-      setAssignments(init);
     } catch {
       alert("تعذّر قراءة الفاتورة");
     }
@@ -130,8 +126,8 @@ export default function InvoicesPage() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Save invoice
-    const { data: inv } = await supabase.from("invoices").insert({
+    // Save invoice record
+    await supabase.from("invoices").insert({
       invoice_number: invoiceData.invoiceNumber,
       issue_date: invoiceData.issueDate,
       supplier: invoiceData.supplier,
@@ -142,25 +138,48 @@ export default function InvoicesPage() {
       total_tax: invoiceData.totalTax,
       total_incl: invoiceData.totalIncl,
       created_by: user?.id,
-    }).select().single();
+    });
 
-    // Save contracts for assigned items
-    for (const [idx, assignment] of Object.entries(assignments)) {
-      if (assignment.celebrity_id) {
-        const item = invoiceData.items[parseInt(idx)];
+    const results: {name: string; amount: number; isNew: boolean}[] = [];
+
+    // Auto-match each item to a celebrity by name
+    for (const item of invoiceData.items) {
+      // Search for celebrity by name (case-insensitive)
+      const { data: found } = await supabase
+        .from("celebrities")
+        .select("id, name")
+        .ilike("name", `%${item.name}%`)
+        .limit(1);
+
+      let celebrity_id = found?.[0]?.id;
+      let isNew = false;
+
+      // If not found, create new celebrity
+      if (!celebrity_id) {
+        const { data: newCel } = await supabase.from("celebrities").insert({
+          name: item.name,
+          added_by: user?.id,
+        }).select().single();
+        celebrity_id = newCel?.id;
+        isNew = true;
+      }
+
+      if (celebrity_id) {
+        // Create pending contract with amount BEFORE tax
         await supabase.from("contracts").insert({
-          celebrity_id: assignment.celebrity_id,
-          campaign_id: assignment.campaign_id || null,
-          amount: item.total,
-          notes: `${item.name} - فاتورة ${invoiceData.invoiceNumber}`,
+          celebrity_id,
+          amount: item.total, // before tax
+          notes: `فاتورة ${invoiceData.invoiceNumber} - ${invoiceData.customer}`,
           status: "pending",
           added_by: user?.id,
         });
+        results.push({ name: item.name, amount: item.total, isNew });
       }
     }
 
     setSaving(false);
     setSaved(true);
+    setSavedContracts(results);
     setInvoiceData(null);
     fetchInvoices();
   }
@@ -192,9 +211,22 @@ export default function InvoicesPage() {
       )}
 
       {saved && (
-        <div className="flex items-center gap-3 bg-green-50 text-green-700 px-5 py-4 rounded-2xl mb-6">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-medium">تم حفظ الفاتورة وإنشاء العقود بنجاح!</span>
+        <div className="bg-green-50 text-green-700 px-5 py-4 rounded-2xl mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-medium">تم حفظ الفاتورة وإنشاء العقود تلقائياً!</span>
+          </div>
+          <div className="space-y-2">
+            {savedContracts.map((c, i) => (
+              <div key={i} className="flex items-center justify-between bg-white rounded-lg px-4 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-800">{c.name}</span>
+                  {c.isNew && <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">مشهور جديد</span>}
+                </div>
+                <span className="font-semibold text-green-700">{c.amount.toLocaleString("ar-SA")} ر.س</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -236,53 +268,31 @@ export default function InvoicesPage() {
             </div>
           </div>
 
-          {/* Items + assignment */}
+          {/* Items */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Package className="w-4 h-4 text-blue-500" /> المنتجات / المشاهير
+              <Package className="w-4 h-4 text-blue-500" /> المشاهير / المنتجات
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 mb-5">
               {invoiceData.items.map((item, i) => (
-                <div key={i} className="border border-gray-100 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-gray-800">{item.name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        الكمية: {item.quantity} × {item.price.toLocaleString("ar-SA")} ر.س
-                      </p>
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-gray-800">{item.total.toLocaleString("ar-SA")} ر.س</p>
-                      <p className="text-xs text-gray-400">+ ضريبة {item.tax.toLocaleString("ar-SA")}</p>
-                    </div>
+                <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-medium text-gray-800">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">الكمية: {item.quantity} × {item.price.toLocaleString("ar-SA")} ر.س</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">اربط بمشهور</label>
-                      <select value={assignments[i]?.celebrity_id || ""}
-                        onChange={e => setAssignments({ ...assignments, [i]: { ...assignments[i], celebrity_id: e.target.value } })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">بدون مشهور</option>
-                        {celebrities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">الحملة</label>
-                      <select value={assignments[i]?.campaign_id || ""}
-                        onChange={e => setAssignments({ ...assignments, [i]: { ...assignments[i], campaign_id: e.target.value } })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">بدون حملة</option>
-                        {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
+                  <div className="text-left">
+                    <p className="font-bold text-blue-700">{item.total.toLocaleString("ar-SA")} ر.س</p>
+                    <p className="text-xs text-gray-400">+ ضريبة {item.tax.toLocaleString("ar-SA")}</p>
                   </div>
                 </div>
               ))}
             </div>
+            <div className="bg-blue-50 rounded-xl p-4 mb-4 text-sm text-blue-700">
+              سيتم البحث عن كل مشهور باسمه تلقائياً — وإنشاؤه إذا لم يكن موجوداً
+            </div>
             <button onClick={saveInvoice} disabled={saving}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-medium transition mt-5 disabled:opacity-60">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              حفظ الفاتورة وإنشاء العقود
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-medium transition disabled:opacity-60">
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ المعالجة...</> : <><Plus className="w-4 h-4" /> حفظ وإنشاء العقود تلقائياً</>}
             </button>
           </div>
         </div>
