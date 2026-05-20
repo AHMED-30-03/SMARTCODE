@@ -18,7 +18,7 @@ export default function ContractsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ celebrity_id: "", campaign_id: "", amount: "", notes: "" });
+  const [form, setForm] = useState({ celebrity_id: "", campaign_id: "", amount: "", notes: "", ad_link: "", drive_link: "" });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -109,6 +109,16 @@ export default function ContractsPage() {
               <input type="text" placeholder="اختياري" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">رابط الإعلان</label>
+              <input type="url" placeholder="https://..." value={form.ad_link} onChange={e => setForm({ ...form, ad_link: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">رابط Google Drive</label>
+              <input type="url" placeholder="https://drive.google.com/..." value={form.drive_link} onChange={e => setForm({ ...form, drive_link: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium">
                 <Plus className="w-4 h-4" /> إضافة
@@ -138,6 +148,7 @@ export default function ContractsPage() {
               <th className="text-right px-4 py-3 font-medium text-gray-600">الحملة</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">المبلغ</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600">الحالة</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">الروابط</th>
               <th className="text-right px-4 py-3 font-medium text-gray-600"></th>
             </tr></thead>
             <tbody>
@@ -160,6 +171,22 @@ export default function ContractsPage() {
                     <td className="px-4 py-3 font-semibold">{con.amount?.toLocaleString("ar-SA")} ر.س</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${sc.color}`}>{sc.label}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {con.ad_link && (
+                          <a href={con.ad_link} target="_blank" rel="noopener noreferrer"
+                            className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-600 px-2.5 py-1.5 rounded-lg transition">
+                            📢 الإعلان
+                          </a>
+                        )}
+                        {con.drive_link && (
+                          <a href={con.drive_link} target="_blank" rel="noopener noreferrer"
+                            className="text-xs bg-green-50 hover:bg-green-100 text-green-600 px-2.5 py-1.5 rounded-lg transition">
+                            📁 Drive
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
