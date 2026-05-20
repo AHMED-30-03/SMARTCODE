@@ -21,6 +21,7 @@ const roleBadgeColors: Record<UserRole, string> = {
 const navItems = [
   { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/dashboard/campaigns", label: "الحملات", icon: Megaphone },
+  { href: "/dashboard/invoices", label: "الفواتير", icon: FileText },
   { href: "/dashboard/celebrities", label: "المشاهير", icon: Star },
   { href: "/dashboard/contracts", label: "العقود", icon: FileText },
   { href: "/dashboard/transfers", label: "التحويلات", icon: TrendingUp },
