@@ -63,7 +63,7 @@ export default function InfluencersPage() {
           max_tokens: 2000,
           messages: [{
             role: "user",
-            content: `استخرج من هذه الفاتورة بيانات جميع المؤثرين. أجب فقط بـ JSON بدون أي نص أو backticks:\n{"influencers":[{"name":"الاسم","amount":0,"iban":"","bank_name":""}]}. المبلغ رقم فقط بدون عملة. إذا لم تجد IBAN أو بنك اتركها فارغة.\n\nمحتوى الفاتورة:\n${htmlContent.slice(0, 8000)}`
+            content: `استخرج من هذه الفاتورة (HTML أو XML) بيانات جميع المؤثرين أو المنتجات أو الخدمات مع أسماء المستفيدين والمبالغ. أجب فقط بـ JSON بدون أي نص أو backticks:\n{"influencers":[{"name":"الاسم","amount":0,"iban":"","bank_name":""}]}. المبلغ رقم فقط بدون عملة. إذا لم تجد IBAN أو بنك اتركها فارغة.\n\nمحتوى الفاتورة:\n${htmlContent.slice(0, 8000)}`
           }]
         })
       });
@@ -130,7 +130,7 @@ export default function InfluencersPage() {
         <div className="flex gap-3">
           <button onClick={() => setShowUpload(!showUpload)}
             className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition">
-            <Upload className="w-4 h-4" /> رفع فاتورة HTML
+            <Upload className="w-4 h-4" /> رفع فاتورة
           </button>
           <button onClick={() => setShowManual(!showManual)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
@@ -156,7 +156,7 @@ export default function InfluencersPage() {
               <label className="flex items-center gap-2 w-full px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-blue-300 cursor-pointer transition">
                 <Upload className="w-4 h-4" />
                 {uploading ? "جارٍ تحليل الفاتورة..." : "اختر ملف PDF"}
-                <input type="file" accept=".html,.htm" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                <input type="file" accept=".html,.htm,.xml" className="hidden" onChange={handleFileUpload} disabled={uploading} />
               </label>
             </div>
           </div>
