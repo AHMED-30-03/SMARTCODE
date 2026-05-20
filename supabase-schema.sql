@@ -105,3 +105,17 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================
+-- UPDATE: Add email, whatsapp, receipt_pdf columns
+-- Run this if you already have the tables
+-- ============================================
+ALTER TABLE public.influencers ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
+ALTER TABLE public.influencers ADD COLUMN IF NOT EXISTS whatsapp TEXT DEFAULT '';
+ALTER TABLE public.influencers ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.receipts ADD COLUMN IF NOT EXISTS receipt_pdf TEXT DEFAULT '';
+
+-- Add 'requested' to influencer status
+ALTER TABLE public.influencers DROP CONSTRAINT IF EXISTS influencers_status_check;
+ALTER TABLE public.influencers ADD CONSTRAINT influencers_status_check 
+  CHECK (status IN ('pending', 'requested', 'processing', 'paid'));
