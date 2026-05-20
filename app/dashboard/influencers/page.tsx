@@ -63,7 +63,7 @@ export default function InfluencersPage() {
   }
 
   const filtered = influencers.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
-  const canRequest = profile?.role === "campaign_manager" || profile?.role === "admin";
+  const canRequest = true;
 
   return (
     <div className="p-6 max-w-6xl">
