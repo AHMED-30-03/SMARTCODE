@@ -8,15 +8,20 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "Tajawal", "sans-serif"],
+        sans: ["Tajawal", "sans-serif"],
       },
       colors: {
         brand: {
-          50: "#f0f7ff",
-          100: "#e0effe",
-          500: "#2563eb",
-          600: "#1d4ed8",
-          700: "#1e40af",
+          50: "#EEF7FD",
+          100: "#D6EEFA",
+          200: "#ADDEF5",
+          300: "#84CDEF",
+          400: "#5BB8E8",
+          500: "#3AA8E0",
+          600: "#2090C8",
+          700: "#1870A0",
+          800: "#105078",
+          900: "#083050",
         },
       },
     },

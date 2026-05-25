@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Plus, Loader2, FileText, Search, Send, Trash2 } from "lucide-react";
+import { Plus, Loader2, FileText, Search, Send, Trash2, Pencil, X, Check } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   pending: { label: "بانتظار الطلب", color: "bg-amber-100 text-amber-700" },
@@ -19,6 +19,8 @@ export default function ContractsPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ celebrity_id: "", campaign_id: "", amount: "", notes: "", ad_link: "", drive_link: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   useEffect(() => { fetchData(); }, []);
 
@@ -58,6 +60,29 @@ export default function ContractsPage() {
   async function deleteContract(id: string) {
     if (!confirm("هل تريد حذف هذا العقد؟")) return;
     await supabase.from("contracts").delete().eq("id", id);
+    fetchData();
+  }
+
+  function startEdit(con: any) {
+    setEditingId(con.id);
+    setEditForm({
+      amount: con.amount || 0,
+      notes: con.notes || "",
+      ad_link: con.ad_link || "",
+      drive_link: con.drive_link || "",
+      campaign_id: con.campaign_id || "",
+    });
+  }
+
+  async function saveEdit(id: string) {
+    await supabase.from("contracts").update({
+      amount: parseFloat(editForm.amount) || 0,
+      notes: editForm.notes,
+      ad_link: editForm.ad_link,
+      drive_link: editForm.drive_link,
+      campaign_id: editForm.campaign_id || null,
+    }).eq("id", id);
+    setEditingId(null);
     fetchData();
   }
 
@@ -173,32 +198,64 @@ export default function ContractsPage() {
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${sc.color}`}>{sc.label}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {con.ad_link && (
-                          <a href={con.ad_link} target="_blank" rel="noopener noreferrer"
-                            className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-600 px-2.5 py-1.5 rounded-lg transition">
-                            📢 الإعلان
-                          </a>
-                        )}
-                        {con.drive_link && (
-                          <a href={con.drive_link} target="_blank" rel="noopener noreferrer"
-                            className="text-xs bg-green-50 hover:bg-green-100 text-green-600 px-2.5 py-1.5 rounded-lg transition">
-                            📁 Drive
-                          </a>
-                        )}
-                      </div>
+                      {editingId === con.id ? (
+                        <div className="space-y-2">
+                          <input type="url" value={editForm.ad_link} onChange={e => setEditForm({...editForm, ad_link: e.target.value})}
+                            placeholder="رابط الإعلان" className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-xs focus:outline-none" />
+                          <input type="url" value={editForm.drive_link} onChange={e => setEditForm({...editForm, drive_link: e.target.value})}
+                            placeholder="رابط Drive" className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-xs focus:outline-none" />
+                          <input type="number" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})}
+                            placeholder="المبلغ" className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-xs focus:outline-none" />
+                          <input value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})}
+                            placeholder="ملاحظات" className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-xs focus:outline-none" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {con.ad_link && (
+                            <a href={con.ad_link} target="_blank" rel="noopener noreferrer"
+                              className="text-xs bg-purple-50 hover:bg-purple-100 text-purple-600 px-2.5 py-1.5 rounded-lg transition">
+                              📢 الإعلان
+                            </a>
+                          )}
+                          {con.drive_link && (
+                            <a href={con.drive_link} target="_blank" rel="noopener noreferrer"
+                              className="text-xs bg-green-50 hover:bg-green-100 text-green-600 px-2.5 py-1.5 rounded-lg transition">
+                              📁 Drive
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {con.status === "pending" && (
-                          <button onClick={() => requestTransfer(con.id)}
-                            className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
-                            <Send className="w-3 h-3" /> طلب تحويل
-                          </button>
+                        {editingId === con.id ? (
+                          <>
+                            <button onClick={() => saveEdit(con.id)}
+                              className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg">
+                              <Check className="w-3 h-3" /> حفظ
+                            </button>
+                            <button onClick={() => setEditingId(null)}
+                              className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg">
+                              <X className="w-3 h-3" /> إلغاء
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {con.status === "pending" && (
+                              <button onClick={() => requestTransfer(con.id)}
+                                className="flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition">
+                                <Send className="w-3 h-3" /> طلب تحويل
+                              </button>
+                            )}
+                            <button onClick={() => startEdit(con)}
+                              className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition">
+                              <Pencil className="w-3 h-3" /> تعديل
+                            </button>
+                            <button onClick={() => deleteContract(con.id)} className="text-gray-300 hover:text-red-500 transition">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
-                        <button onClick={() => deleteContract(con.id)} className="text-gray-300 hover:text-red-500 transition">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>

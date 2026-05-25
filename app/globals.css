@@ -4,17 +4,12 @@
 @tailwind utilities;
 
 :root {
-  --font-tajawal: "Tajawal", sans-serif;
+  --brand-primary: #5BB8E8;
+  --brand-dark: #3D3D3D;
+  --brand-gray: #A0A0A0;
 }
 
-* {
-  font-family: "Tajawal", sans-serif;
-}
-
-body {
-  direction: rtl;
-  background: #f8fafc;
-}
-
+* { font-family: "Tajawal", sans-serif; }
+body { direction: rtl; background: #f8fafc; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
