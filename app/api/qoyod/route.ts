@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const res = await fetch(`${QOYOD_BASE}/quotations`, {
+   const res = await fetch(`${QOYOD_BASE}/quotes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
