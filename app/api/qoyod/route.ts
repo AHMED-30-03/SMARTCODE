@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const QOYOD_BASE = "https://api.qoyod.com/2.0";
-const COMPANY_ID = "27727";
-
 export async function POST(req: NextRequest) {
   const QOYOD_API_KEY = process.env.QOYOD_API_KEY;
   const body = await req.json();
@@ -29,26 +26,22 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-   const res = await fetch(`${QOYOD_BASE}/quotes`, {
+    const res = await fetch(`https://api.qoyod.com/2.0/quotes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "API-KEY": QOYOD_API_KEY,
-        "organization-id": COMPANY_ID,
       },
       body: JSON.stringify(payload),
     });
 
     const text = await res.text();
-    console.log("Qoyod response status:", res.status);
-    console.log("Qoyod response body:", text);
+    console.log("Qoyod status:", res.status);
+    console.log("Qoyod body:", text.slice(0, 300));
 
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return NextResponse.json({ error: "Qoyod returned non-JSON", raw: text.slice(0, 500) }, { status: 500 });
-    }
+    try { data = JSON.parse(text); } 
+    catch { return NextResponse.json({ error: "non-JSON", raw: text.slice(0, 300) }, { status: 500 }); }
 
     if (!res.ok) {
       return NextResponse.json({ error: data }, { status: res.status });
