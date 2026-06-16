@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const QOYOD_API_KEY = process.env.QOYOD_API_KEY;
 const QOYOD_BASE = "https://api.qoyod.com/api/2.0";
 const COMPANY_ID = "27727";
 
 export async function POST(req: NextRequest) {
+  const QOYOD_API_KEY = process.env.QOYOD_API_KEY; // ← جوه الـ function
+  
   const body = await req.json();
   const { invoice_number, issue_date, customer_name, items, total_excl, total_tax, total_incl } = body;
 
@@ -12,7 +13,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "QOYOD_API_KEY not set" }, { status: 500 });
   }
 
-  // Build Qoyod invoice payload
   const payload = {
     quotation: {
       reference: invoice_number,
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, qoyod_id: data.quotation?.id });
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
