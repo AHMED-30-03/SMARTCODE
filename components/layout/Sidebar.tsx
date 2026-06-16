@@ -48,7 +48,6 @@ export default function Sidebar({ profile }: { profile: UserProfile }) {
           <Image src="/logo.jpg" alt="Smart Code" width={40} height={40} className="rounded-lg object-contain" />
           <div className="min-w-0">
             <p className="font-bold text-[#3D3D3D] text-sm">Smart Code</p>
-            <p className="text-xs text-gray-400">إدارة المؤثرين</p>
           </div>
         </div>
       </div>
