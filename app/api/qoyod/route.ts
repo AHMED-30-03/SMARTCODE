@@ -39,7 +39,16 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    console.log("Qoyod response status:", res.status);
+    console.log("Qoyod response body:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return NextResponse.json({ error: "Qoyod returned non-JSON", raw: text.slice(0, 500) }, { status: 500 });
+    }
 
     if (!res.ok) {
       return NextResponse.json({ error: data }, { status: res.status });
