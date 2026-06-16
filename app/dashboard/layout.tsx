@@ -14,10 +14,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .single();
 
   // Get all companies for super_admin
-  let companies = null;
+  let companies: any[] | undefined = undefined;
   if (profile?.role === "super_admin") {
     const { data } = await supabase.from("companies").select("*").order("name");
-    companies = data;
+    companies = data || undefined;
   }
 
   return (
