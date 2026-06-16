@@ -37,7 +37,7 @@ export default function LoginPage() {
             <Image src="/logo.jpg" alt="Smart Code" width={64} height={64} className="object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-[#3D3D3D]">Smart Code</h1>
-          <p className="text-gray-500 mt-1 text-sm">لوحة إدارة حملات المؤثرين</p>
+          
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
