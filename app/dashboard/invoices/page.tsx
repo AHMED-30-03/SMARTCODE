@@ -26,6 +26,8 @@ export default function InvoicesPage() {
   const [saved, setSaved] = useState(false);
   const [savedContracts, setSavedContracts] = useState<{name: string; amount: number; isNew: boolean}[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [sendingToQoyod, setSendingToQoyod] = useState<string | null>(null);
+  const [qoyodSuccess, setQoyodSuccess] = useState<string | null>(null);
 
   useEffect(() => { fetchLists(); fetchInvoices(); }, []);
 
@@ -198,6 +200,39 @@ export default function InvoicesPage() {
     fetchInvoices();
   }
 
+  async function sendToQoyod(inv: any) {
+    setSendingToQoyod(inv.id);
+    setQoyodSuccess(null);
+    try {
+      const res = await fetch("/api/qoyod", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoice_number: inv.invoice_number,
+          issue_date: inv.issue_date,
+          customer_name: inv.customer,
+          items: [{ name: inv.customer, quantity: 1, price: inv.total_excl, total: inv.total_excl }],
+          total_excl: inv.total_excl,
+          total_tax: inv.total_tax,
+          total_incl: inv.total_incl,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQoyodSuccess(inv.id);
+        // Update invoice as sent to qoyod
+        const supabase = (await import("@/lib/supabase")).createClient();
+        await supabase.from("invoices").update({ sent_to_qoyod: true, qoyod_type: "quotation" }).eq("id", inv.id);
+        fetchInvoices();
+      } else {
+        alert("فشل الإرسال: " + JSON.stringify(data.error));
+      }
+    } catch (err) {
+      alert("حدث خطأ أثناء الإرسال");
+    }
+    setSendingToQoyod(null);
+  }
+
   return (
     <div className="p-6 max-w-5xl">
       <div className="mb-6">
@@ -323,6 +358,7 @@ export default function InvoicesPage() {
                 <th className="text-right px-4 py-3 font-medium text-gray-600">العميل</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">التاريخ</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">الإجمالي</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">قيود</th>
               </tr>
             </thead>
             <tbody>
@@ -332,6 +368,16 @@ export default function InvoicesPage() {
                   <td className="px-4 py-3">{inv.customer}</td>
                   <td className="px-4 py-3 text-gray-500">{inv.issue_date}</td>
                   <td className="px-4 py-3 font-semibold">{inv.total_incl?.toLocaleString("ar-SA")} ر.س</td>
+                  <td className="px-4 py-3">
+                    {inv.sent_to_qoyod ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">✓ أُرسلت لقيود</span>
+                    ) : (
+                      <button onClick={() => sendToQoyod(inv)} disabled={sendingToQoyod === inv.id}
+                        className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition disabled:opacity-60 flex items-center gap-1">
+                        {sendingToQoyod === inv.id ? "جارٍ الإرسال..." : "إرسال عرض سعر لقيود"}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
