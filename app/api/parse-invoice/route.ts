@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 2000,
         messages: [{
           role: "user",
@@ -30,10 +30,23 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await response.json();
+
+    // تحقق من إن الـ API ردت بـ error
+    if (!response.ok) {
+      return NextResponse.json({ error: data.error?.message || "Anthropic API error" }, { status: 500 });
+    }
+
     const text = data.content?.map((c: any) => c.text || "").join("") || "";
     const clean = text.replace(/```json|```/g, "").trim();
+
+    // تحقق إن الـ text مش فاضي
+    if (!clean) {
+      return NextResponse.json({ error: "Empty response from API" }, { status: 500 });
+    }
+
     const parsed = JSON.parse(clean);
     return NextResponse.json({ success: true, data: parsed });
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
