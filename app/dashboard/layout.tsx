@@ -9,13 +9,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("*, company:companies(*)")
     .eq("id", user.id)
     .single();
 
+  // Get all companies for super_admin
+  let companies = null;
+  if (profile?.role === "super_admin") {
+    const { data } = await supabase.from("companies").select("*").order("name");
+    companies = data;
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar profile={profile} />
+      <Sidebar profile={profile} companies={companies} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>

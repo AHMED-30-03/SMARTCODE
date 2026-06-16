@@ -11,12 +11,21 @@ export default function CelebritiesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", whatsapp: "", iban: "", bank_name: "", notes: "" });
 
   useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
-    const { data } = await supabase.from("celebrities").select("*, contracts(count)").order("name");
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from("profiles").select("company_id, role").eq("id", user!.id).single();
+    setCompanyId(profile?.company_id);
+
+    let query = supabase.from("celebrities").select("*").order("name");
+    if (profile?.role !== "super_admin" && profile?.company_id) {
+      query = query.eq("company_id", profile.company_id);
+    }
+    const { data } = await query;
     setCelebrities(data || []);
     setLoading(false);
   }
@@ -24,7 +33,7 @@ export default function CelebritiesPage() {
   async function addCelebrity(e: React.FormEvent) {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("celebrities").insert({ ...form, added_by: user?.id });
+    await supabase.from("celebrities").insert({ ...form, company_id: companyId, added_by: user?.id });
     setForm({ name: "", email: "", whatsapp: "", iban: "", bank_name: "", notes: "" });
     setShowForm(false);
     fetchData();
@@ -66,7 +75,8 @@ export default function CelebritiesPage() {
           <p className="text-sm text-gray-500 mt-0.5">{celebrities.length} مشهور مسجّل</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition">
+          className="flex items-center gap-2 text-white px-4 py-2 rounded-xl text-sm font-medium transition"
+          style={{ backgroundColor: "#5BB8E8" }}>
           <Plus className="w-4 h-4" /> إضافة مشهور
         </button>
       </div>
@@ -80,11 +90,11 @@ export default function CelebritiesPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{f.label}</label>
                 <input type={f.type} placeholder={f.placeholder} required={f.label.includes("*")}
                   value={(form as any)[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5BB8E8] transition" />
               </div>
             ))}
             <div className="md:col-span-3 flex gap-3">
-              <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium">
+              <button type="submit" className="flex items-center gap-2 text-white px-5 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: "#5BB8E8" }}>
                 <Plus className="w-4 h-4" /> إضافة
               </button>
               <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50">إلغاء</button>
@@ -98,11 +108,11 @@ export default function CelebritiesPage() {
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث..."
-              className="w-full pr-10 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full pr-10 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5BB8E8]" />
           </div>
         </div>
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#5BB8E8" }} /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400"><Users className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>لا يوجد مشاهير</p></div>
         ) : (
@@ -126,56 +136,28 @@ export default function CelebritiesPage() {
                           className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
                       ) : (
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-white" style={{ backgroundColor: "#5BB8E8" }}>
                             {cel.name.charAt(0)}
                           </div>
                           <span className="font-medium text-gray-800">{cel.name}</span>
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
-                      ) : <span className="text-xs text-gray-500">{cel.email || "—"}</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.whatsapp} onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
-                      ) : <span className="text-xs text-gray-500">{cel.whatsapp || "—"}</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.iban} onChange={e => setEditForm({ ...editForm, iban: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
-                      ) : <span className="text-xs text-gray-500">{cel.iban || "—"}</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.bank_name} onChange={e => setEditForm({ ...editForm, bank_name: e.target.value })}
-                          className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm focus:outline-none" />
-                      ) : <span className="text-xs text-gray-500">{cel.bank_name || "—"}</span>}
-                    </td>
+                    <td className="px-4 py-3">{isEditing ? <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm" /> : <span className="text-xs text-gray-500">{cel.email || "—"}</span>}</td>
+                    <td className="px-4 py-3">{isEditing ? <input value={editForm.whatsapp} onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })} className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm" /> : <span className="text-xs text-gray-500">{cel.whatsapp || "—"}</span>}</td>
+                    <td className="px-4 py-3">{isEditing ? <input value={editForm.iban} onChange={e => setEditForm({ ...editForm, iban: e.target.value })} className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm" /> : <span className="text-xs text-gray-500">{cel.iban || "—"}</span>}</td>
+                    <td className="px-4 py-3">{isEditing ? <input value={editForm.bank_name} onChange={e => setEditForm({ ...editForm, bank_name: e.target.value })} className="w-full px-3 py-1.5 border border-blue-300 rounded-lg text-sm" /> : <span className="text-xs text-gray-500">{cel.bank_name || "—"}</span>}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {isEditing ? (
                           <>
-                            <button onClick={() => saveEdit(cel.id)} className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg">
-                              <Check className="w-3 h-3" /> حفظ
-                            </button>
-                            <button onClick={() => setEditingId(null)} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg">
-                              <X className="w-3 h-3" /> إلغاء
-                            </button>
+                            <button onClick={() => saveEdit(cel.id)} className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg"><Check className="w-3 h-3" /> حفظ</button>
+                            <button onClick={() => setEditingId(null)} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg"><X className="w-3 h-3" /> إلغاء</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => startEdit(cel)} className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg">
-                              <Pencil className="w-3 h-3" /> تعديل
-                            </button>
-                            <button onClick={() => deleteCelebrity(cel.id)} className="text-gray-300 hover:text-red-500 transition">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => startEdit(cel)} className="flex items-center gap-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg"><Pencil className="w-3 h-3" /> تعديل</button>
+                            <button onClick={() => deleteCelebrity(cel.id)} className="text-gray-300 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
                           </>
                         )}
                       </div>
