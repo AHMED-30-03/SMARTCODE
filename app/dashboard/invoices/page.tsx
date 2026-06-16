@@ -83,25 +83,14 @@ export default function InvoicesPage() {
   }
 
   async function parsePDFWithAI(base64: string): Promise<InvoiceData> {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("/api/parse-invoice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-            { type: "text", text: 'استخرج بيانات الفاتورة. أجب فقط بـ JSON بدون backticks:\n{"invoiceNumber":"","issueDate":"YYYY-MM-DD","supplier":"","supplierTax":"","customer":"","customerTax":"","items":[{"name":"","quantity":1,"price":0,"total":0,"tax":0}],"totalExcl":0,"totalTax":0,"totalIncl":0}' }
-          ]
-        }]
-      })
+      body: JSON.stringify({ base64, mediaType: "application/pdf" }),
     });
     const data = await response.json();
-    const text = data.content?.map((c: any) => c.text || "").join("") || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
+    if (!data.success) throw new Error(data.error);
+    return data.data;
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
