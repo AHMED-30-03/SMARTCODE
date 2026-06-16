@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const QOYOD_BASE = "https://api.qoyod.com/api/2.0";
+const QOYOD_BASE = "https://api.qoyod.com/2.0";
 const COMPANY_ID = "27727";
 
 export async function POST(req: NextRequest) {
