@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const QOYOD_BASE = "https://api.qoyod.com/api/2.0";
+export async function POST(req: NextRequest) {
+  const QOYOD_API_KEY = process.env.QOYOD_API_KEY; // ← هنا جوه
+  const body = await req.json();
 const COMPANY_ID = "27727";
 
 export async function POST(req: NextRequest) {
